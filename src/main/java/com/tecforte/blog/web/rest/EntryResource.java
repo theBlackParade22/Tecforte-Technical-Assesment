@@ -1,9 +1,11 @@
 package com.tecforte.blog.web.rest;
 
+import com.tecforte.blog.domain.enumeration.Emoji;
+import com.tecforte.blog.service.BlogService;
 import com.tecforte.blog.service.EntryService;
-import com.tecforte.blog.web.rest.errors.BadRequestAlertException;
+import com.tecforte.blog.service.dto.BlogDTO;
 import com.tecforte.blog.service.dto.EntryDTO;
-
+import com.tecforte.blog.web.rest.errors.BadRequestAlertException;
 import io.github.jhipster.web.util.HeaderUtil;
 import io.github.jhipster.web.util.PaginationUtil;
 import io.github.jhipster.web.util.ResponseUtil;
@@ -13,15 +15,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.validation.Valid;
 import java.net.URI;
 import java.net.URISyntaxException;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -32,17 +32,16 @@ import java.util.Optional;
 @RequestMapping("/api")
 public class EntryResource {
 
-    private final Logger log = LoggerFactory.getLogger(EntryResource.class);
-
     private static final String ENTITY_NAME = "entry";
-
+    private final Logger log = LoggerFactory.getLogger(EntryResource.class);
+    private final EntryService entryService;
+    private final BlogService blogService;
     @Value("${jhipster.clientApp.name}")
     private String applicationName;
 
-    private final EntryService entryService;
-
-    public EntryResource(EntryService entryService) {
+    public EntryResource(EntryService entryService, BlogService blogService) {
         this.entryService = entryService;
+        this.blogService = blogService;
     }
 
     /**
@@ -58,7 +57,25 @@ public class EntryResource {
         if (entryDTO.getId() != null) {
             throw new BadRequestAlertException("A new entry cannot already have an ID", ENTITY_NAME, "idexists");
         }
+        final Optional<Boolean> booleanIsPositive = blogService.findOne(entryDTO.getBlogId()).map(BlogDTO::isPositive);
+        booleanIsPositive.ifPresent(isPositive -> {
+            final Emoji entryDTOEmoji = entryDTO.getEmoji();
+            if (isPositive && (entryDTOEmoji.equals(Emoji.SAD) || entryDTOEmoji.equals(Emoji.ANGRY))) {
+                throw new BadRequestAlertException("Invalid Emoji", ENTITY_NAME, "invalidEmoji");
+            } else if (!isPositive && (entryDTOEmoji.equals(Emoji.LIKE) || entryDTOEmoji.equals(Emoji.HAHA))) {
+                throw new BadRequestAlertException("Invalid Emoji", ENTITY_NAME, "invalidEmoji");
+            } else {
+                final String titleToLowerCase = entryDTO.getTitle().toLowerCase();
+                final String contentToLowerCase = entryDTO.getContent().toLowerCase();
+                if (isPositive && (titleToLowerCase.matches("(sad)|(fear)|(lonely)") || contentToLowerCase.matches("(sad)|(fear)|(lonely)"))) {
+                    throw new BadRequestAlertException("Invalid Content", ENTITY_NAME, "invalidContent");
+                } else if (!isPositive && (titleToLowerCase.matches("(love)|(happy)|(trust)") || contentToLowerCase.matches("(love)|(happy)|(trust)"))) {
+                    throw new BadRequestAlertException("Invalid Content", ENTITY_NAME, "invalidContent");
+                }
+            }
+        });
         EntryDTO result = entryService.save(entryDTO);
+
         return ResponseEntity.created(new URI("/api/entries/" + result.getId()))
             .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, result.getId().toString()))
             .body(result);
@@ -79,6 +96,23 @@ public class EntryResource {
         if (entryDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
+        final Optional<Boolean> booleanIsPositive = blogService.findOne(entryDTO.getBlogId()).map(BlogDTO::isPositive);
+        booleanIsPositive.ifPresent(isPositive -> {
+            final Emoji entryDTOEmoji = entryDTO.getEmoji();
+            if (isPositive && (entryDTOEmoji.equals(Emoji.SAD) || entryDTOEmoji.equals(Emoji.ANGRY))) {
+                throw new BadRequestAlertException("Invalid Emoji", ENTITY_NAME, "invalidEmoji");
+            } else if (!isPositive && (entryDTOEmoji.equals(Emoji.LIKE) || entryDTOEmoji.equals(Emoji.HAHA))) {
+                throw new BadRequestAlertException("Invalid Emoji", ENTITY_NAME, "invalidEmoji");
+            } else {
+                final String titleToLowerCase = entryDTO.getTitle().toLowerCase();
+                final String contentToLowerCase = entryDTO.getContent().toLowerCase();
+                if (isPositive && (titleToLowerCase.matches("(sad)|(fear)|(lonely)") || contentToLowerCase.matches("(sad)|(fear)|(lonely)"))) {
+                    throw new BadRequestAlertException("Invalid Content", ENTITY_NAME, "invalidContent");
+                } else if (!isPositive && (titleToLowerCase.matches("(love)|(happy)|(trust)") || contentToLowerCase.matches("(love)|(happy)|(trust)"))) {
+                    throw new BadRequestAlertException("Invalid Content", ENTITY_NAME, "invalidContent");
+                }
+            }
+        });
         EntryDTO result = entryService.save(entryDTO);
         return ResponseEntity.ok()
             .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, entryDTO.getId().toString()))
@@ -88,9 +122,7 @@ public class EntryResource {
     /**
      * {@code GET  /entries} : get all the entries.
      *
-
      * @param pageable the pagination information.
-
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of entries in body.
      */
     @GetMapping("/entries")
@@ -126,4 +158,6 @@ public class EntryResource {
         entryService.delete(id);
         return ResponseEntity.noContent().headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, id.toString())).build();
     }
+
+
 }

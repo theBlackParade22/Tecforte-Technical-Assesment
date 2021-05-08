@@ -1,9 +1,8 @@
 package com.tecforte.blog.web.rest;
 
 import com.tecforte.blog.service.BlogService;
-import com.tecforte.blog.web.rest.errors.BadRequestAlertException;
 import com.tecforte.blog.service.dto.BlogDTO;
-
+import com.tecforte.blog.web.rest.errors.BadRequestAlertException;
 import io.github.jhipster.web.util.HeaderUtil;
 import io.github.jhipster.web.util.ResponseUtil;
 import org.slf4j.Logger;
@@ -15,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.net.URI;
 import java.net.URISyntaxException;
-
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,14 +25,11 @@ import java.util.Optional;
 @RequestMapping("/api")
 public class BlogResource {
 
-    private final Logger log = LoggerFactory.getLogger(BlogResource.class);
-
     private static final String ENTITY_NAME = "blog";
-
+    private final Logger log = LoggerFactory.getLogger(BlogResource.class);
+    private final BlogService blogService;
     @Value("${jhipster.clientApp.name}")
     private String applicationName;
-
-    private final BlogService blogService;
 
     public BlogResource(BlogService blogService) {
         this.blogService = blogService;
@@ -73,6 +69,7 @@ public class BlogResource {
         if (blogDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
+
         BlogDTO result = blogService.save(blogDTO);
         return ResponseEntity.ok()
             .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, blogDTO.getId().toString()))
@@ -82,7 +79,6 @@ public class BlogResource {
     /**
      * {@code GET  /blogs} : get all the blogs.
      *
-
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of blogs in body.
      */
     @GetMapping("/blogs")
@@ -115,5 +111,33 @@ public class BlogResource {
         log.debug("REST request to delete Blog : {}", id);
         blogService.delete(id);
         return ResponseEntity.noContent().headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, id.toString())).build();
+    }
+
+    /**
+     * {@code DELETE  /blogs/:keywords} : to remove blog entries that contain certain keywords from all the blogs.
+     *
+     * @param keywords the keyword of the blog entry to delete.
+     * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
+     */
+    @DeleteMapping("/blogs/[{keywords}]")
+    public ResponseEntity<Void> cleanBlogs(@PathVariable String[] keywords) {
+        log.debug("REST request to clean Blog entries with keywords: {}", Arrays.toString(keywords));
+
+        blogService.cleanAllBlogs(keywords);
+        return ResponseEntity.noContent().headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, Arrays.toString(keywords))).build();
+    }
+
+    /**
+     * {@code DELETE  /blogs/:id/clean/:keywords} : to remove blog entries that contain certain keywords from id of blog provided.
+     *
+     * @param keywords the keyword of the blog entry to delete.
+     * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
+     */
+    @DeleteMapping("/blogs/{id}/clean/[{keywords}]")
+    public ResponseEntity<Void> cleanBlogs(@PathVariable Long id, @PathVariable String[] keywords) {
+        log.debug("REST request to clean Blog entry with keywords: {}", Arrays.toString(keywords));
+
+        blogService.cleanBlog(id, keywords);
+        return ResponseEntity.noContent().headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, Arrays.toString(keywords))).build();
     }
 }

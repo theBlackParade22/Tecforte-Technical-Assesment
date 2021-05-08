@@ -3,10 +3,12 @@ package com.tecforte.blog.service;
 import com.tecforte.blog.domain.Blog;
 import com.tecforte.blog.repository.BlogRepository;
 import com.tecforte.blog.service.dto.BlogDTO;
+import com.tecforte.blog.service.dto.EntryDTO;
 import com.tecforte.blog.service.mapper.BlogMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,11 +26,14 @@ public class BlogService {
 
     private final Logger log = LoggerFactory.getLogger(BlogService.class);
 
+    private final EntryService entryService;
+
     private final BlogRepository blogRepository;
 
     private final BlogMapper blogMapper;
 
-    public BlogService(BlogRepository blogRepository, BlogMapper blogMapper) {
+    public BlogService(EntryService entryService, BlogRepository blogRepository, BlogMapper blogMapper) {
+        this.entryService = entryService;
         this.blogRepository = blogRepository;
         this.blogMapper = blogMapper;
     }
@@ -81,5 +86,34 @@ public class BlogService {
     public void delete(Long id) {
         log.debug("Request to delete Blog : {}", id);
         blogRepository.deleteById(id);
+    }
+
+    public void cleanAllBlogs(String[] listKeywords) {
+        final Page<EntryDTO> entryServiceAll = entryService.findAll(Pageable.unpaged());
+        entryServiceAll.forEach(entryDTO -> {
+            final String title = entryDTO.getTitle();
+            final String content = entryDTO.getContent();
+            for (String kw : listKeywords) {
+                if (title.toLowerCase().contains(kw.toLowerCase()) || content.toLowerCase().contains(kw.toLowerCase())) {
+                    entryService.delete(entryDTO.getId());
+                }
+            }
+        });
+    }
+
+    public void cleanBlog(Long blogId, String[] listKeywords) {
+        final Page<EntryDTO> entryServiceAll = entryService.findAll(Pageable.unpaged());
+        entryServiceAll.forEach(entryDTO -> {
+            if (entryDTO.getBlogId().equals(blogId)) {
+                final String title = entryDTO.getTitle();
+                final String content = entryDTO.getContent();
+
+                for (String kw : listKeywords) {
+                    if (title.toLowerCase().contains(kw.toLowerCase()) || content.toLowerCase().contains(kw.toLowerCase())) {
+                        entryService.delete(entryDTO.getId());
+                    }
+                }
+            }
+        });
     }
 }
